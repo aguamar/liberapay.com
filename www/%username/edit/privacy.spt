@@ -1,9 +1,27 @@
 # coding: utf8
 
-from liberapay.utils import get_participant
+from liberapay.utils import form_post_success, get_participant
 
 [---]
 participant = get_participant(state, restrict=True, allow_member=True)
+
+if request.method == 'POST':
+    if not participant.is_person:
+        raise response.error(403)
+    fields = request.body['privacy'].split()
+    for field in fields:
+        if field not in constants.PRIVACY_FIELDS:
+            continue
+        value = request.body.get(field) == 'on'
+        if isinstance(getattr(participant, field), bool):
+            website.db.run("""
+                UPDATE participants
+                   SET {0} = %s
+                 WHERE id = %s
+            """.format(field), (value, participant.id))
+        else:
+            participant.update_bit(field, 1, value)
+    form_post_success(state, msg=_("Your privacy settings have been changed."))
 
 title = _("Editing")
 subhead = _("Privacy")
